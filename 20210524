@@ -1,0 +1,65 @@
+리눅스 심화..!
+
+작업 스케쥴링 : 원하는 작업에 대한 예약.
+
+at : 1회 예약 작업
+at 10:40   
+예약 작업 걸고 ctrl d 로 종료
+at -l로 예약된 작업 확인가능
+예약된 명령을 보고 싶으면 val/spool/at 
+작업 결과는 모니터에 출력되지 않음. 다른 터미널에 리다이렉트 해야한다.
+작업삭제 :  at -r 작업번호
+
+crontab : 정기적 예약 작업
+crontab -e
+예약작업 편집(vi 에디터처럼)
+분	 시	일 	월	요일(0-6)          작업내용
+30	 23 	 1  	 *      	    *	     ls -l>/root/lstext.txt
+
+crontab -l
+예약작업 리스트 출력
+/var/spool/cron/root 에 직접 가서 저장된 작업 볼 수 있음.
+
+crontab -r
+현재 계정의 crontab 내용 모두 삭제(거의안씀)
+
+/etc/crontab을 vi에디터로 수정할 수도 있음. 형식은 주석참고
+
+/etc/anacrontab
+예약된 작업이 실행됐는지 확인 후 실행되지 않았으면 실행.
+서버가 꺼졌을 때 사용
+
+crontab -e -u user
+user 계정에 명령 예약
+
+액세스 제어 설정 파일
+/etc/at.deny
+allow 파일 없이 deny 파일만 존재하면  deny 파일에 입력한 계정은 at 명령 사용불가
+/etc/at.allow
+allow 파일과 deny 파일이 둘 다 존재하면 allow 파일에 입력된 계정만 at 명령 사용가능
+allow, deny 둘 다 존재하지 않으면 root만 스케쥴링 명령 사용 가능
+
+/etc/cron.deny
+/etc/cron.allow
+	
+
+사용자 관리
+	
+
+/etc/passwd : 계정정보가 저장된 기본 파일
+
+로그인 ID가 달라도 UID가 같으면 리눅스는 같은 사용자로 판단한다.
+	
+
+/etc/shadow : 패스워드에 관한 속성을 저장한 파일
+속성 외워두면 좋다.
+
+	useradd 옵션 알아두기
+
+		
+	userdel test : test 계정 삭제
+		-r 로 홈디렉토리도 같이 삭제하기.
+
+	usermod : 계정 옵션 변경
+		-aG : 그룹 추가(덮어쓰기 x)
+	
