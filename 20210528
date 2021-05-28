@@ -1,0 +1,22 @@
+rpm 
+	의존성 문제가 있다.
+
+yum
+	의존성 문제를 해결.
+	필요한 파일을 인터넷 연결로 repository에서 모두 다운로드해서 설치
+	-y : yes 물어보는거 스킵
+	yum update 패키지이름 : 업데이트
+	yum remove 패키지이름 : 삭제
+	/etc/yum.repos.d/ : 레포파일위치
+
+
+
+원격 터미널 접속 ssh
+telnet은 모든 통신이 평문이라서 보안에 취약
+무료로 쓰는 오픈ssh 를 대부분 사용
+ssh 계정명@아이피주소
+/etc/ssh/ssgd_config
+ssh-keygen
+키 기반인증을 위한 공개키와 개인키 생성ㄱ
+
+
