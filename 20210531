@@ -1,0 +1,48 @@
+sshd_config
+	ssh 서버구성 파일
+
+가상머신 설정
+
+NAT 
+외부랑은 연결되지만 가상머신 끼리는 연결x
+
+NAT network
+외부, 내부 가상머신 끼리도 연결 가능(설정해야함.)
+
+호스트 전용 어댑터
+윈도우에서 들어오는 것만 허용
+
+게이트웨이 주소
+	ip route 명령어(default via ~)
+
+
+네트워크 관련 명령어
+ip addr show
+ip link show
+ip route
+ifconfig
+traceroute / tracepath / ping
+ss / netstat
+nmtui : 보기편한 매니저 ui 제공. ipv6와 고급설정을 하기 힘들어서 제한적으로 사용.
+
+
+NetworkManager 가 실행중이면 네트워크를 동적으로 관리할 수 있다.
+nmcli 
+connection(con) show
+device(dev) show
+
+nmcli con add type ethernet con-name example1 ifname enp0s4
+	네트워크 생성
+nmcli con up example1
+	활성화
+nmcli con reload : 설정 파일 수정 시 적용시킬 때.
+
+hostname
+DNS에 등록하지 않으면 호스트네임으로는 통신이 불가.
+static hostname : 사용자가 지정하는 호스트이름
+/etc/hosts 파일을 편집해서 등록해야 사용가능.
+transient hostname : 커널이 관리하는 동적 호스트이름
+hostnamectl set-hostname hello.com
+
+
+
