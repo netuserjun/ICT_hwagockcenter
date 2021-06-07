@@ -1,0 +1,248 @@
+물리적주소 : MAC 주소 → 이더넷 프로토콜
+논리적주소 : IPv4, IPv6주소 → IP 프로토콜
+
+서비스별 포트번호
+FTP : 20, 21
+SSH : 22
+Telnet : 23
+SMTP : 25
+UDP, TCP, DNS : 53
+Http : 80
+Https : 443
+
+UTP 케이블
+라우터,PC : Tx Rx 순서
+스위치,허브 : Rx Tx 순서
+Direct : 양쪽이 같은 UDP : 스위치와 라우터, 스위치와 PC, 허브와 PC
+Cross : 양쪽이 서로 다른 UDP : 스위치와 허브, 라우터와 PC
+
+스위치 브릿지 기능
+table 학습
+forwarding : 해당 포트로만 전달
+filtering : 나머지 포트는 전달하지 않음
+flooding : 모르는 주소는 모두 전달
+aging :  삭제
+
+허브 : flooding 기능만 존재
+
+
+packet tracer  시뮬레이터 : 프로그래밍
+GNS3 : 실제 라우터 이미지 있어야함. 실제 라우터랑 비슷.
+
+interface 
+	ethernet    e0, e1  		10M
+	fastethernet  fa0/0, fa0/1   	100M
+	giga ethernet   g1/0	1000M =1G
+
+
+UTP : 	direct (straight)
+	cross
+
+8가닥(1~8) : 1236 만 보내고 받는데 사용함
+	어느 것이 보내는지, 받는지
+	cable이 아니라,	
+	장비의 interface에 따라 달라짐.
+
+
+subnet 10.10.13.0/24
+/24 prefix  Network ID 24bit 동일한 부분
+	  Host ID 8bit  2^8=256  (0~255)
+
+10.10.13.0~ 10.10.13.255 
+subnetmask 255.255.255.0
+	first : 10.10.13.0 Network Address
+	last : 10.10.13.255 Broadcast Address
+
+gateway 10.10.13.254
+host  10.10.13.1~ 6
+
+switch 브릿지 기능
+  learning러닝 (table 학습)
+  forwarding 포워딩 (해당포트로만 전달)
+  filterfing 필터링 (나머지 포트는 전달X)
+  flooding 플루딩 (모르는 주소는 모두 전달)
+  againg 에이징 (삭제)
+
+
+라우터
+	메인보드
+	CPU
+	RAM	: interface, routing table, 
+		IOS, running-config
+	power
+	flash(저장장치)
+		- flash:  IOS 압축(~.bin)
+		- nvram: startup-config
+	ROM : bootstrap
+
+환경설정 파일 config
+ - startup-config 부팅할 때 저장된 config-> RAM
+ - running-config RAM 올라와있는 config
+    전원이 off -> 없어짐.
+ => 전원을 끄기 전에 running-config 를 startup-config로 복사 (저장)
+
+
+작동모드 : 프롬프트
+사용자 모드 Router>   설정할 수없음. 일부 정보를 볼 수 있음. ping 가능
+	  Router#  설정할 수 없음. 모든 정보를 볼 수 있음.
+	  Router(config)#   설정할 수 있음. 정보 X
+	  Router(config-if)#  인터페이스를 설정
+	  Router(config-subif)#  서브인터페이스 구성
+	  Router(config-router)#   라우팅 프로토콜 구성
+
+
+
+cisco IOS : 명령어 입력시  ? 도움말
+
+인터페이스 확인 Router> show ip int brief
+Router#  show ip int brief
+Interface              IP-Address      OK? Method Status                Protocol
+ 
+FastEthernet0/0        unassigned      YES unset  administratively down down
+ 
+FastEthernet0/1        unassigned      YES unset  administratively down down
+ 
+Vlan1                  unassigned      YES unset  administratively down down
+
+설정할 것. 	1) 장비이름 : hwagok_R
+		2) 인터페이스 fa0/0 : 활성화, IP주소 10.10.13.254/24
+
+Router>  
+
+Hwagok_R#dkjfals 	(알수없는명령)
+Translating "dkjfals"...domain server (255.255.255.255) % Name lookup aborted  
+ctrl+shift+6  로 중지
+
+Router> enable
+Router# conf t
+Router(config)#  hostname Hawgok_R
+Hawgok_R(config)# int fa0/0  (연결한 인터페이스로 들어감)
+Hawgok_R(config-if)# ip address 10.10.13.254 255.255.255.0
+Hawgok_R(config-if)# no shutdown
+Hawgok_R(config-if)#  end  또는 ctrl+z
+Hawgok_R#
+
+# show running-config또는 show run 입력한 명령어 확인
+인터페이스 상태 확인 # show ip int brief
+Hwagok_R#show ip  int brief
+Interface              IP-Address      OK? Method Status                Protocol
+ 
+FastEthernet0/0        10.10.13.254    YES manual up                    up
+ 
+FastEthernet0/1        unassigned      YES unset  administratively down down
+
+
+Router에 IP주소를 할당하는 이유?
+	1) hosts들의 게이트웨이를 알려주기 주기 위해.
+		(다른 네트워크를 가기위한 출구)
+		ip address, subnet mask, default gateway
+	2) 인터페이스에 IP, subnet mask 설정, 활성화 하면
+	   네트워크로 인식해서 라우팅 테이블에 인스톨됨.
+	   fa0/0  10.10.13.254  255.255.255.0
+	   -> Routing table fa0/0  10.10.13.0/24 
+
+Router 길찾기하는 장비 - 이정표가 있어야함. (Routing Table)
+Routing 길찾기
+Route 길, 경로
+
+Hwagok_R>show ip route
+Codes: C - connected, S - static, I - IGRP, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, E - EGP
+       i - IS-IS, L1 - IS-IS level-1, L2 - IS-IS level-2, ia - IS-IS inter area
+       * - candidate default, U - per-user static route, o - ODR
+       P - periodic downloaded static route
+
+Gateway of last resort is not set
+
+     10.0.0.0/24 is subnetted, 1 subnets
+C       10.10.13.0 is directly connected, FastEthernet0/0
+Hwagok_R>
+
+라우터는 패킷을 수신하여 목적지 주소를 라우팅 테이블과 비교해서
+전달할 곳을 찾습니다.
+만약, 목적지 주소와 매칭되는 정보가 없으면 drop
+-> 관리자가 라우팅 table 설정하는 작업이 필요함.
+
+
+
+Router fa0/1 ------------- switch 추가 ------- pc 2대 추가
+network 10.10.14.0/24
+R fa0/1 10.10.14.254 255.255.255.0
+pc 1번째 10.10.14.1 255.255.255.0
+pc 2번째 10.10.14.2 255.255.255.0
+
+@Hwagok_R
+Hwagok_R> enable
+Hwagok_R# conf t
+Hwagok_R(config)# interface fa0/1
+Hwagok_R(config-if)# ip address 10.10.14.254 255.255.255.0
+Hwagok_R(config-if)# no shutdown
+Hwagok_R(config-if)# end
+Hwagok_R# show running-config 입력한 명령어 확인
+!
+interface FastEthernet0/1
+ ip address 10.10.14.254 255.255.255.0
+ duplex auto
+ speed auto
+!
+Hwagok_R# show ip int brief (IP주소를 가진 인터페이스를 간략히 확인)
+Interface              IP-Address      OK? Method Status                Protocol
+ 
+FastEthernet0/0        10.10.13.254    YES manual up                    up
+ 
+FastEthernet0/1        10.10.14.254    YES manual up                    down
+
+Hwagok_R#ping 10.10.14.1
+
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.10.14.1, timeout is 2 seconds:
+.!!!!
+Success rate is 80 percent (4/5), round-trip min/avg/max = 0/0/0 ms
+
+Hwagok_R#ping 10.10.14.2
+
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.10.14.2, timeout is 2 seconds:
+.!!!!
+Success rate is 80 percent (4/5), round-trip min/avg/max = 0/0/0 ms
+
+Hwagok_R#
+
+10.10.14.0 /24 IP통신확인  1,2,254
+PC0(10.10.13.1)에서 PC7(10.10.14.1)로 ping test 확인 (real time, simulation mode)  L2주소/L3주소가 어떻게 바뀌는지 확인을 합니다.
+패킷이 라우터에 있을 때 inbound/outbound 확인해보기(TTL)
+
+
+
+라우터 1대 추가
+Hawgok_R  인터페이스 부족 -> 모듈 추가 NM-2FE-2W
+
+인터페이스 상태 확인
+FastEthernet0/1        unassigned      YES unset  administratively down down
+FastEthernet1/0        unassigned      YES manual up                    down
+ 
+오늘의 정리
+1. UTP,STP 케이블 종류 : direct, cross 구분
+
+2. OSI 7 Layer : Layer 이름, 기능, 프로토콜, PDU, 장비
+
+3. 스위치, 허브 동작
+	스위치 : ethernet header mac 주소 인식 가능
+		mac address table 스스로 만듦 (learning)
+		frame의 목적지 주소를 mac address table을 보고 해당 포트로만 전달 (forwarding)  등 5가지 동작을 함.(flooding 포함)
+
+	허브 : 프로토콜 인식이 안됨. 신호가 들어온 포트를 제외하고 모든 포트로 다 전달 함 (flooding)
+
+4. 스위치와 라우터 비교
+	스위치 L2 : L1~L2  ethernet , mac address table(스스로학습)
+		frame 목적지 주소 모를 때 : flooding
+	라우터 L3 : L1~L3  ethernet, IP,   IP routing table (관리자설정)
+		IP 목적지 주소 모를 때 : drop
+
+5. 라우터 설정 : 이름설정, IP/subnetmask 설정, 활성화
+    왜 설정하였는지
+
+
+
