@@ -1,0 +1,291 @@
+static route : 정적 라우팅
+각 라우터에 모든 네트워크를 직접 설정하는 것.
+
+dynamic route : 동적 라우팅
+	라우터들이 프로토콜을 통해서 라우팅 정보를 서로 동기화함.
+
+
+show run(tab)
+show ip int brief
+
+ip route 쳤을 때 
+
+C는 라우터랑 direct로 연결된 네트워크
+S는 라우터에 관리자가 정적(static)으로 입력한 네트워크
+[1/0]에서 1은 관리거리(AD) 0은 메트릭값. 동적은 계산하는데 정적은 그냥 0
+
+
+라우터의 config
+	- 부팅할 때 메모리에 올리는 config
+	   startup-config
+	- 부팅 후 동작 중인 메모리에 있는 config
+	   running-config (전원이 꺼지면 없어짐)
+	전원을 끄기전에 running-config를 startup-config로 복사 -> 저장
+
+
+라우터 1대에 2개의 네트워크를 연결을 하면 통신이 잘됨.
+
+2개이상의 라우터를 연결할 경우, 다른 라우터의 네트워크를 인식하지 못함.
+각 라우터에 모든 네트워크를 직접적으로 설정하는 것
+ static route , 정적 라우팅
+라우터들이 프로토콜을 통해서 라우팅 정보를 서로 동기화함
+ dynamic route, 동적 라우팅
+
+static route 실습 1 : 라우터 3대, 각 내부 네트워크 1개씩, 라우터끼리 연결
+
+interface 설정 후, ip  address, 상태 확인
+같은 네트워크 내에서 ping test
+각 라우터의 라우팅 테이블을 확인해주세요.
+
+static route 설정 전 라우팅 테이블 정보
+Hwgok_R 
+	C  192.168.1.0/24 fa0/0
+	C  192.168.2.0/24 fa0/1
+Kachisan_R
+	C 192.168.2.0/24 fa1/0
+	C 192.168.3.0/24 fa0/0
+	C 192.168.4.0/24 fa1/1
+Sinjeong_R
+	C 192.168.4.0/24 fa0/1
+	C 192.168.5.0/24 fa0/0
+
+정적라우팅 설정
+en
+conf t
+ip route [목적지주소] [서브넷마스크] [게이트웨이IP 또는 자신interface]
+
+@Hwgok_R  정적라우팅 설정
+en
+show ip route c
+ C 192.168.1.0/24 fa0/0
+ C  192.168.2.0/24 fa0/1
+conf t
+ip route 192.168.3.0 255.255.255.0 192.168.2.254
+ip route 192.168.4.0 255.255.255.0 192.168.2.254
+ip route 192.168.5.0 255.255.255.0 192.168.2.254
+end
+show run (입력한 명령어 확인)
+show ip route (라우팅 테이블 확인-N5개 모두 있는지, 게이트웨이는 맞는지)
+
+
+Hawgok_R 라우팅 테이블 확인
+C    192.168.1.0/24 is directly connected, FastEthernet0/0
+C    192.168.2.0/24 is directly connected, FastEthernet0/1
+S    192.168.3.0/24 [1/0] via 192.168.2.254
+S    192.168.4.0/24 [1/0] via 192.168.2.254
+S    192.168.5.0/24 [1/0] via 192.168.2.254
+Hwagok_R#
+
+Kachisan_R 라우팅 테이블확인
+S    192.168.1.0/24 [1/0] via 192.168.2.1
+C    192.168.2.0/24 is directly connected, FastEthernet1/0
+C    192.168.3.0/24 is directly connected, FastEthernet0/0
+C    192.168.4.0/24 is directly connected, FastEthernet1/1
+S    192.168.5.0/24 [1/0] via 192.168.4.254
+Kachisan_R#
+
+Sinjeong_R 라우팅 테이블 확인
+S    192.168.1.0/24 [1/0] via 192.168.4.1
+S    192.168.2.0/24 [1/0] via 192.168.4.1
+S    192.168.3.0/24 [1/0] via 192.168.4.1
+C    192.168.4.0/24 is directly connected, FastEthernet0/1
+C    192.168.5.0/24 is directly connected, FastEthernet0/0
+Sinjeong_R#
+
+각 PC들끼리 통신 확인
+
+라우팅 테이블에서
+S    192.168.5.0/24 [1/0] via 192.168.2.254
+
+  [  AD value / metric ] 
+
+default route : 인터넷을 연결하기 위한 경로.
+   -> static route
+       dynmaic route
+
+conf t
+ip route  [목적지 네트워크 주소] [서브넷마스크] [gw주소]
+ip route  0.0.0.0 0.0.0.0 [인터넷방향interface]
+
+Hwagok_R에 기존 static route 정보를 삭제하고 default route 추가하기
+C    192.168.1.0/24 is directly connected, FastEthernet0/0
+C    192.168.2.0/24 is directly connected, FastEthernet0/1
+S*   0.0.0.0/0 [1/0] via 192.168.2.254
+Hwagok_R#
+
+default route는 라우팅 정보 3개를 1개로 줄이는 효과는 있으나,
+잘못 사용하게 되면 looping 루핑(경로를 못찾음)이 일어날 수 있음.
+인터넷에 연결하는 장비는 반드시 default route가 추가되어야 함.
+
+어제 했던 10.10.13.0 10.10.14.0 10.10.15.0 10.10.16.0 Route2대를 static route로 연결하여 PC가 통신하도록 구성해보세요.
+
+
+
+220.23.7.0/24를 서브넷팅 함
+subnet 220.23.7.128/26  
+	Network ID 26bit   HostID 6bit =3 2bit
+			2^6=64 ip개수
+	IP주소 대역 : 220.23.7.128~191
+	first 220.23.7.128/26 : Network Address 
+ 	last 220.23.7.191/26 : Broadcast Address
+	할당가능한 IP주소대역 220.23.7.129~190
+
+/26 prefix -> subnetmask
+ 255.255.255.11000000 
+ -> 255.255.255.192
+
+subnet 220.23.7.0/30
+ Network ID 30bit,  HostID 2bit 2^2=4
+  220.23.7.0~ 220.23.7.3
+  first 220.23.7.0  Network Address
+  last 220.23.7.3 Broadcast address
+  할당가능한 IP주소대역 220.23.7.1~ 2
+/30 prefix -> subnetmask 변환
+ 255.255.255.11111100
+ -> 255.255.255.252
+
+
+*공통점 : Network ID+Host ID 구분 목적
+표기 방법이 다름
+subnetmask : Network ID 연속된 1로 표기
+	     Host ID는 0으로 표기
+	IP주소와 같은 형태로 표기
+	사용처: IP주소를 할당 때 사용
+wildcardmask : Network ID 연속된 0로 표기
+	     Host ID는 1으로 표기
+	IP주소와 같은 형태로 표기
+	사용처 : 라우팅, ACL 정책
+	     1이면 missmatch, 0이면 match	
+prefix : Network ID만 /Nid bit만 표기
+	사용처 : 디자인, IPv6
+
+ /24  sm 255.255.255.0  wc 0.0.0.255
+
+255.255.255.255 - subnetmask = wildcardmask
+
+prefix -> wildcardmask
+ /30 ->  host ID로 IP갯수 - 1
+    hostid 2bit 2^2=4  4-1=3    0.0.0.3
+
+/26  -> hostid 6bit 2^6=64 -1 -> 63
+	0.0.0.63
+ prefix -> sm -> wc 
+
+
+
+저장 명령어 
+Router> en
+Router# copy running-config startup-config
+또는
+Router# write memory  또는 wr
+
+
+192.168.6.0/24 네트워크가 추가됨에 따라
+Sinjeong_R에는 인터페이스 설정을 하면 라우팅테이블에 올라옴.
+하지만, Hwagok_R, Kachisan_R에게도 직접 설정해야 함.
+네트워크 변화가 생길 때 마다 관리자가
+모든 라우터에 수정을 해주어야 함.
+
+static route 특징
+ - 라우터 개수가 적으면 사용하기가 편한 편.
+ - 라우터 개수가 많으면 관리자가 번거로움.
+ - 네트워크 변화가 생길때마다 모든 라우터에 수정을 해주어야 함.
+ - 관리자가 토폴로지에 대한 이해가 필요함 -> 잘못 설정하면 통신이 X
+ - 라우터 입장에서는 리소스 자원을 적게 사용함.
+ - dynamic route와 비교해서 트래픽을 생성하지 않아 정보 누출의 위험이 적다. (보안적)
+
+-> 네트워크 변화가 많거나 라우터 개수가 늘어남에 따라 dynamic route사용함.
+
+static -> RIP (Routing Information protocol)
+
+dynamic route protocol 종류, 작동방법, 프로토콜 변화 과정.
+
+static : 각 Router 에 Connected network 확인 후 , 없는 네트워크를 입력함.
+dynamic : 각 Router에 connected network 확인 후, 이 네트워크를 입력함
+	0) connected network 확인
+	   # show ip route connected
+	1) process 동작함. (rip 켜기)
+	   # conf t
+	   # router [라우팅프로토콜]   또는 router rip
+			       router ospf [processID]
+			       router eigrp 200(as number)
+	2) 프로세스에게 전달할 network 정보를 선언
+	    - network 정보, metric (비용 계산) -> 패킷을 발생해서 전달.
+	    # network 192.168.1.0
+
+RIP 설정 후 확인
+  show run (입력한 명령어 확인)
+  show ip protocols (해당 라우터에서 동작하는 라우팅의 속성 확인)
+  show ip route  (라우팅 테이블 확인)  -> R
+  show ip rip database (rip network/metric 정보확인)
+
+static route : ad value =1
+rip : ad value = 120
+동일한 네트워크에 대해서 static / rip -> static route 정보만 라우팅 테이블에 인스톨됨 (rip으로 학습된 network 정보는 라우팅 테이블에 올라오지  않음)
+
+@Hwagok_R 에서 RIP 설정하기
+!직접 연결된 네트워크 정보 확인
+Hwagok_R>show ip route connected 
+ C   192.168.1.0/24  is directly connected, FastEthernet0/0
+ C   192.168.2.0/24  is directly connected, FastEthernet0/1
+Hwagok_R>en
+Hwagok_R#conf t
+Enter configuration commands, one per line.  End with CNTL/Z.
+Hwagok_R(config)#router ?
+  bgp    Border Gateway Protocol (BGP)
+  eigrp  Enhanced Interior Gateway Routing Protocol (EIGRP)
+  ospf   Open Shortest Path First (OSPF)
+  rip    Routing Information Protocol (RIP)
+Hwagok_R(config)#router rip ?
+  <cr>
+! RIP 라우팅 프로토콜의 프로세스 동작하기
+Hwagok_R(config)#router rip 
+Hwagok_R(config-router)#network ?
+  A.B.C.D  Network number
+! RIP이 전달할 네트워크 주소 선언하기
+Hwagok_R(config-router)#network 192.168.1.0
+Hwagok_R(config-router)#network 192.168.2.0
+Hwagok_R(config-router)#end
+Hwagok_R#
+
+동일 네트워크 주소를 전달함으로, 
+static route를 삭제해야 AD value가 낮은 rip 네트워크 정보가 보임.
+ 
+
+
+
+router rip
+network x.x.x.x 
+네트워크 주소를 선언할 때, directly connected network정보를 선언해야함.
+자신이 가지고 있지 않는 네트워크나, up up 되어있지 않은 네트워크를 선언하더라도 rip이 다른 라우터에게 전달하지 않음.
+network x.x.x.x 정보를 입력하지 않으면 다른 라우터에게 전달 하지 않음.
+
+
+router = hop
+ip route 네트워크주소 서브넷마스크 [next hop address]
+
+rip metric : 라우터 개수  (hop count)
+distance vector 방식 : 거리와 방향에 따라서 metric계산하고, 네트워크 정보를 전달함.
+	- 옆의 라우터를 통해서 네트워크 정보를 전달 받고
+	   metric 누적. -> 최대 15 까지만 가능함. 
+	- 일정한 시간마다 업데이트 함 (네트워크변화를 감지 X)
+	   rip 30초 마다 업데이트 , igrp 90초 마다.
+
+
+VLSM 가변길이 서브넷 마스크
+	각각의 서브넷이 각기 다른 크기를 가질 수 있다.
+
+오늘의 정리
+1. Administrative Distance Value 란?
+
+2. Metric 이란?
+
+3. static route와 dynamic route를 비교하시오.
+
+4. dynaic routing protocol을 작동하는 방법은?
+
+
+
+
+
+
