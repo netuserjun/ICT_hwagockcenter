@@ -1,0 +1,292 @@
+rip v1 : classful 
+rip v2 : classless 
+
+
+
+v1에서 v2로는 version 2 만 입력해주면 댐
+
+passive interface
+	PC와 연결된 네트워크에 RIP 정보를 주지 않게 하려고 
+
+
+
+classful routing protocol
+	network 정보를 주고 받을 때,
+	subnetmask를 주고 받지 않음 -> default sm
+	auto-summary함.
+
+IP주소 디자인 -> c class -> classful 디자인되어있었음
+	문제가 없음
+
+서브넷팅 (VLSM)  : sm 주고받지 않으니 X
+	라우팅 테이블에 올라오지 않음.
+
+RIP version2를 만들어서 subnetmask를 주고받게 함.
+
+IP주소가 부족해서 나온 기술들 :
+	DHCP
+	사설IP주소대역 -> 인터넷 안됨 -> NAT기술
+	서브넷팅(VLSM)  
+	IPv6 기술 - 해결책
+
+R3대 모두에게 RIP version 2로 전환
+
+현재 version1 인경우
+Ujangsan_R>show  ip protocols 
+Routing Protocol is "rip"
+Sending updates every 30 seconds, next due in 10 seconds
+Invalid after 180 seconds, hold down 180, flushed after 240
+Outgoing update filter list for all interfaces is not set
+Incoming update filter list for all interfaces is not set
+Redistributing: rip
+Default version control: send version 1, receive any version
+  Interface             Send  Recv  Triggered RIP  Key-chain
+  GigabitEthernet0/0    1     2 1   
+  GigabitEthernet0/1    1     2 1   
+Automatic network summarization is in effect
+Maximum path: 4
+Routing for Networks:
+	120.0.0.0
+Passive Interface(s):
+Routing Information Sources:
+	Gateway         Distance      Last Update
+	120.1.2.246          120      00:00:03
+Distance: (default is 120)
+Ujangsan_R>
+
+@3개 라우터 모두 버전2로 전환하기
+en
+conf t
+router rip
+  ?
+   version ?
+end
+show run
+show ip protocol (작동버전 확인)
+show ip route (network 정보 확인)
+
+Ujangsan_R#show ip protocols 
+Routing Protocol is "rip"
+Sending updates every 30 seconds, next due in 13 seconds
+Invalid after 180 seconds, hold down 180, flushed after 240
+Outgoing update filter list for all interfaces is not set
+Incoming update filter list for all interfaces is not set
+Redistributing: rip
+Default version control: send version 2, receive 2
+  Interface             Send  Recv  Triggered RIP  Key-chain
+  GigabitEthernet0/0    2     2     
+  GigabitEthernet0/1    2     2     
+Automatic network summarization is in effect
+Maximum path: 4
+Routing for Networks:
+	120.0.0.0
+Passive Interface(s):
+Routing Information Sources:
+	Gateway         Distance      Last Update
+	120.1.2.246          120      00:00:20
+Distance: (default is 120)
+Ujangsan_R#
+
+
+Ujangsan_R#show ip int g0/1
+GigabitEthernet0/1 is up, line protocol is up (connected)
+  Internet address is 120.1.2.241/29
+  Broadcast address is 255.255.255.255
+    Split horizon is enabled
+스플라잇 호라이즌 : 하나의 인터페이스에 네트워크목록을 주거나 받는게 중복되지 않음.
+ 자신이 전달한 네트워크 주소는 받는지 않음.
+ 옆라우터로부터 네트워크 주소를 받으면 제외하고 전달함.
+
+
+passive-interface  인터페이스지정
+  해당 인터페이스에 라우팅 정보를 전달하지 않겠음.
+  pc가 연결되어있는 인터페이스를 차단함.
+
+Ujangsan_R - g0/0 차단
+  passive-interface g0/0  
+   g0/1 만 전달함.
+
+router rip
+default passive-interface   
+no passive-interface g0/1(화곡라우터연결)
+end   모두 passive걸고, rip전달할 곳만 no걸음.
+
+@Ujansan_R
+en
+conf t
+router rip
+   passive-interface default
+   no passive-interface g0/1
+end
+
+@ Hawgok_R
+en
+conf t
+router rip
+   passive-interface default
+   no passive-interface g0/1
+   no passive-interface g0/2
+end
+
+@Kkachisan_R
+en
+conf t
+router rip
+   passive-interface default
+   no passive-interface g0/2
+end
+
+
+3개 라우터 모두 설정
+en
+conf t
+router rip
+   no auto-summary  
+end
+
+IP주소를 비연속적으로 할당하면 라우터는 자신만 해당네트워크가 있다고 인지하고,
+ classful로  summary해서 전달함.
+  10.0.0.0/9  -> 10.0.0.0/8
+   10.128.0.0/9  -> 10.0.0.0/8
+
+
+show run 명령어확인
+show ip protocols   (version 2, summarization -> not effect
+시뮬레이션모드에서 subnetmask 정보가 /9, /17 전달하는지 확인
+라우팅 테이블에 모든 네트워크가 올라오는지 확인
+show ip route
+
+
+distance vector 방식으로 업데이트/metric계산 : 문제점-> loop 루핑
+ - maximum hop count  15  (hop=16 나쁜경로를 알림)
+
+
+ospf 라우팅 프로토콜로 라우팅 테이블 구성하기
+show ip route connected  직접연결된 네트워크 확인
+    C  x.x.x.x
+conf t
+router ospf 1[processID]   ospf1 프로세스 동작하기
+  network  x.x.x.x x.x.x.x area 0    ospf가 전달할 네트워크 선언
+end
+
+@Ujangsan_R
+en
+show ip route connected
+ C   10.0.0.0/9  is directly connected, GigabitEthernet0/0
+ C   172.16.0.0/30  is directly connected, GigabitEthernet0/1
+conf t
+router ospf 1
+   network 10.0.0.0  0.127.255.255  area 0
+		255.128.0.0
+  network 172.16.0.0  0.0.0.3 area 0
+		   255.255.255.252
+end
+show run 입력한 명령어 확인
+show ip ospf ?    ospf 정보 확인
+show ip ospf int g0/0   해당 네트워크의 ospf정보확인
+show ip ospf neighbor    ospf네이버 테이블
+show ip ospf database    ospf 토폴로지 (link state database 목록)
+show ip route  라우팅 테이블
+show ip protocols     ospf 속성 확인
+
+
+Ujangsan_R   ospf 설정 config
+!
+router ospf 1
+ log-adjacency-changes
+ network 10.0.0.0 0.127.255.255 area 0
+ network 172.16.0.0 0.0.0.3 area 0
+!
+03:02:02: %OSPF-5-ADJCHG: Process 1, Nbr 172.16.128.1 on GigabitEthernet0/1 from LOADING to FULL, Loading Done
+
+
+Hwagok_R  ospf 설정 config
+!
+router ospf 1
+ log-adjacency-changes
+ network 172.16.0.0 0.0.0.3 area 0
+ network 172.16.0.4 0.0.0.3 area 0
+ network 172.16.128.0 0.0.127.255 area 0
+!
+
+
+Kkachisan_R   ospf 설정 config
+router rip
+ version 2
+ network 10.0.0.0
+ network 172.16.0.0
+ no auto-summary
+!
+03:07:48: %OSPF-5-ADJCHG: Process 1, Nbr 172.16.128.1 on GigabitEthernet0/2 from LOADING to FULL, Loading Done
+
+
+RIP metric : 라우터개수 (hop count)
+OSPF metric : cost (계산된 BW)  show int g0/0
+
+
+
+
+
+라우팅 프로토콜의 분류
+   회사내에서 사용/회사들을 연결해주는지
+	- IGP (internal gateway protocol)  : RIP, OSPF, EIGRP, ...
+	- EGP (external gateway protocol) : BGP
+   subnet mask를 주고 받는지 여부에 따라서
+	- classful (sm X) : RIPv1, IGRP
+	- classless (sm 0) : RIPv2, OSPF, EIGRP, IS-IS, BGP
+   metric이나 update방식에 따라서
+	- distance vector 거리 방향에 따라서 업데이트 , 일정한 시간마다 업데이트
+		RIPv1, RIPv2, EIGRP(metric), BGP
+	- link state : 연결 상태에 따라서 업데이트. N 변화즉시 업데이트
+		OSPF, IS-IS
+
+스위치에 IP할당하기
+	스위치는 물리적인 interface에 IP를 할당하지 못함.
+	가상의 인터페이스 (BVI)에 IP주소를 할당함. (interface vlan 1)
+	공장에서 나올때 부터 vlan 1이 부여 되어 있으며
+	모든 인터페이스가 vlan 1에 속해 져 있습니다. #show vlan 1
+	en
+	show ip int brief
+		vlan 1
+	conf t
+	int vlan 1
+	  ip address 10.0.0.2 255.128.0.0
+	  no shutdown
+	  exit
+ 	 ip default-gateway 10.0.0.1 (다른네트워크를 가고자할때)
+	end
+	-> IP를 할당하여 원격 접속 하거나, ping test가 가능함.
+
+
+
+오늘의 정리
+1. RIP 라우팅 프로토콜의 특징 
+	RIP 무엇의 약자인지.
+	작동방법
+	metric
+	Administrative Distance value
+	장점
+	단점
+
+거리벡터 방식의 루팅을 위한 기술들
+	maximum hop count
+	split horizon
+	route poisoning
+	poison reverse
+	trigger update
+
+OSPF 라우팅 프로토콜 특징
+	RIP의 단점 -> OSPF  보완
+	metric
+	Administrative Distance value
+	Bandwidth은 낮으나 네트워크 정보를 서로 주고받아야 해서 
+		적게 주고 받기 위해 적용된 것들 : 
+		대그룹-소그룹 , AS - area,  
+		네트워크 정보를 DR(반장), BDR(부반장)을 통해 전달함.
+
+
+
+
+
+스위치 IP 할당, 라우팅 테이블 보는 방법 (subunetmask longest match)
+라우팅 프로토콜 흐름
