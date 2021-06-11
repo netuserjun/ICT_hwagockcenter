@@ -1,0 +1,424 @@
+OSPF 구성해보기
+
+routing protocol : OSPF   (process ID : 100)
+
+area 0 : 172.16.3.0/24
+area 100 : 172.16.0.0/24, 172.16.1.0/24 , 172.16.2.0/24
+area 200 : 10.0.0.0/24, 10.0.1.0/24, 10.0.2.0/24
+
+
+@SW1
+!
+hostname SW1
+!
+interface Vlan1
+ ip address 172.16.0.2 255.255.255.0
+!
+ip default-gateway 172.16.0.1
+!
+
+@SW2
+!
+hostname SW2
+!
+interface Vlan1
+ ip address 172.16.2.2 255.255.255.0
+!
+ip default-gateway 172.16.2.1
+!
+
+@SW3
+!
+hostname SW3
+!
+interface Vlan1
+ ip address 10.0.1.2 255.255.255.0
+!
+ip default-gateway 10.0.1.1
+!
+
+@SW4
+!
+hostname SW4
+!
+!
+interface Vlan1
+ ip address 10.0.2.2 255.255.255.0
+!
+ip default-gateway 10.0.2.1
+!
+
+
+
+@R1
+R1# show ip route connected 
+ C   172.16.0.0/24  is directly connected, FastEthernet0/0
+ C   172.16.1.0/24  is directly connected, FastEthernet0/1
+conf t
+router ospf 100 (process ID 100) - ospf 프로세스 시작
+ network 172.16.0.0  255.255.255.0  area 100
+ 	네트워크주소  마스크       area  areaID
+ network 172.16.1.0  255.255.255.0  area 100
+end
+show ip int brief
+show run  입력한 명령어 확인
+ !
+ router ospf 100
+  log-adjacency-changes
+  network 172.16.0.0 0.0.0.255 area 100
+  network 172.16.1.0 0.0.0.255 area 100
+ !
+
+@R2
+R2>show ip route connected 
+ C   172.16.1.0/24  is directly connected, FastEthernet0/1
+ C   172.16.2.0/24  is directly connected, FastEthernet0/0
+ C   172.16.3.0/24  is directly connected, FastEthernet1/1
+en
+conf t
+router ospf 100  - ospf process100 시작
+  network 172.16.1.0 0.0.0.255 area 100
+  network  172.16.2.0 0.0.0.255 area 100
+  network  172.16.3.0 0.0.0.255 area 0
+end
+show run 입력한 명령어 확인
+
+
+각 라우터의 ID를 확인, 
+ABR (Area Border Router) : ???
+ area에 경계에 있는 라우터. 
+ 2개이상의 area를 가지고 있는 라우터
+
+area 100 ABR ? R2
+area 200 ABR ? R3
+area 0 ABR ? R2, R3
+
+show  ip  protocols
+show  ip  ospf  int  fa0/0
+show  ip  ospf  neighbor
+show  ip  ospf  database
+show  ip  ospf  border-router
+show  ip  route
+
+ O E1
+ O E2   -> 다른 라우팅 프로토톨을 OSPF로 재분배 한 네트워크 
+	ASBR 라우터가 함.
+
+ABR  area border router
+	-> O IA
+ASBR Autonumous system boundary Router
+	AS 하나의 라우팅정책을 사용하는 대 그룹
+	대그룹과 대그룹(하나의 라우팅 정책)의 경계에 있는 라우터
+	2개이상의 라우팅 프로토콜을 동작하는 라우터
+	-> O E1  , O E2,  O N1,  O N2
+
+인터넷에 연결되는 장비는 default route가 있어야함.  0.0.0.0/0
+ospf 프로토콜로 default route를 전달하면됨.
+R2-----isp가 연결되어있다고 가능하고, 설정하기 (loopback0)
+
+R2 :  default route 추가(static route), default route를 ospf로 전달해.
+
+@R2
+en
+conf t
+ip route  0.0.0.0   0.0.0.0  loopback 0    (R2 라우팅 테이블에 default route 추가)
+end
+show ip route
+	-> S*   0.0.0.0/0 is directly connected, Loopback0
+
+@R2
+conf t
+router ospf 100
+  default-information originate  
+  라우팅테이블에 있는 디폴드경로를 OSPF로 전달해주세요.
+end
+
+@R1, R3, R4
+show ip route 
+  O*  0.0.0.0/0  있으면됨.
+
+모든 라우터를 저장 -> 패킷트레이서 save 하기.
+
+
+---------------------------------------------
+
+VLAN  : virtual LAN  
+가상 랜.
+네트워크와 네트워크를 나누고 연결해주는 장비는 라우터이다.
+switch는 랜 네트워크에 포함되어 있음.
+스위치에게도 네트워크를 가상으로 구분하고자 함.
+ethernet header에 tagging (vlan ID)를 달아서 네트워크를 구분함.
+게이트웨이는 반드시 있어야함( 라우터는 별도 구성)
+
+사용하는 이유
+	- 물리적으로 네트워크를 나눈 것이 아니라
+	  논리적으로 네트워크를 나누고자 할 때
+	  떨어져있는데, 같은 네트워크, 같은 강의실이지만, 나눌때
+	- 하나의 케이블에 여러 트래픽을 전송할 때 : voice, data
+	- vlan ID 의 tag를 달기 때문에 특정 vlan을 차단할 수 있음.
+	- broadcast domain을 줄이기 위해서 (방송용 트래픽을 줄일 수 있음)
+
+Router  설정 : 물리적인 cable은 하나 - interface 활성화
+	vlan 을 여러개 사용시 해당 vlan 마다 gateway 설정해야 함.
+	가상인페이스를 사용함, vlan 수만큼 subinterface 생성
+	fa0/0-----------switch
+	    fa0/0.1  ,     fa0.0.2  
+	encapsultion type 지정 (ethernet 아니기 때문에 지정해야함)
+	ip address, subnetmask 할당 하기 , 해당 vlan ID와 맵핑시키기
+
+switch 설정 ; 필요한 vlan 생성, ( vlan 1, 10, 20)
+	PC가 연결된 포트 : access port  (이미 하나의 vlan 에 속함-어느 vlan 지정)
+	switch와 switch가 연결된 포트 : trunk port (여러 vlan 다님.-tagging하세요. 방법 선정)
+
+switch에서 access port, trunk port 포트 구별하기.
+
+
+vlan 1, vlan 2
+
+vlan 1 Network 192.168.1.0/24
+	gateway 192.168.1.1
+	hosts 192.168.1.11~254
+vlan 2 Network 192.168.2.0/24
+	gateway 192.168.2.1
+	hosts 192.168.2.11~254
+
+connection : 
+  Router fa0/0------- fa0/24 SW1  fa0/23------fa0/24 SW2
+
+switch : switchport  fa0/1 ~ fa0/24
+ access port
+   vlan 1 hosts : fa0/1 - fa0/11
+   vlan 2 hosts : fa0/12 - fa0/22 
+ trunk port : fa0/23, fa0/24
+
+trunk encapsulation type : 2가지
+	- 표준 IEEE 802.1Q  (dot1q)     { data | IP | ethernet }
+				  { data | IP | 802.1q }
+				     802.1q방식 encapsulation
+	- 비표준 cisco  ISL 		{ data | IP  | ethernet | ISL }
+
+
+@라우터
+en
+conf t
+hostname VLAN_GW
+int fa0/0
+  no shutdown
+ exit
+int fa0/0.1
+  encapsulation dot1q 1
+  ip address 192.168.1.1 255.255.255.0
+  exit
+int fa0/0.2
+  encapsulation dot1q 2
+  ip address 192.168.2.1 255.255.255.0
+end
+show run 입력한 명령어 확인
+show ip int brief 상태확인
+show ip route 라우팅테이블
+copy run start
+
+@SW2 (vlan 생성, accessport , trunk port 설정)
+show vlan : vlan ID 확인, vlan ID에 속한 access port 확인
+show int trunk :  trunk port, encapsulation type , tagging 확인
+
+
+cisco 전용 
+	DTP  자동으로 trunk port가 됨.
+	VTP   vlan 정보를 자동으로 동기화. - trunk port 끼리 주고받음.
+
+
+
+ACC_SW1# show int fa0/1 switchport 
+Name: Fa0/1
+Switchport: Enabled
+Administrative Mode: dynamic auto   <- DTP를 수신하면 trunk 가 됨.
+Operational Mode: static access
+Administrative Trunking Encapsulation: dot1q
+Operational Trunking Encapsulation: native
+Negotiation of Trunking: On
+Access Mode VLAN: 1 (default)
+Trunking Native Mode VLAN: 1 (default)
+Voice VLAN: none
+
+vlan 1에 속한 access port는 언제든지 trunk 가 될 수 있기 때문에, access port로만 동작하도록 구성할 필요가 있음.
+
+en
+conf t
+hostname ACC_SW1
+vlan 2
+  name SECURE
+  exit
+int range fa0/1 - fa0/11
+   switchport mode access (하나의 vlan에 속함. tag를 달지마세요.)
+   switchport access vlan 1 (access port 역할일 경우, vlan 1에 속하세요.)
+   spanning-tree portfast  (spanning-tree 루프계산하시마세요. 바로 FWD전환)
+   exit
+int range fa0/12 -  fa0/22
+   switchport mode access
+   switchport access vlan 2
+   spanning-tree portfast
+   exit
+int range fa0/23 , fa0/24
+   switchport mode trunk (vlan id 태그를 다세요.- IEEE 802.1q만 가능함)
+end
+show run 입력한 명령어 확인
+show vlan : vlan id와 access port 확인
+show int trunk : trunk port 상태 확인
+
+
+
+@SW2 : vlan 2 생성, access port (fa0/1-22), trunk port (f0/24)
+en
+conf t
+hostname ACC_SW2
+vlan 2
+  name SECURE
+  exit
+int range fa0/1 - fa0/11
+   switchport mode access (하나의 vlan에 속함. tag를 달지마세요.)
+   switchport access vlan 1 (access port 역할일 경우, vlan 1에 속하세요.)
+   spanning-tree portfast  (spanning-tree 루프계산하시마세요. 바로 FWD전환)
+   exit
+int range fa0/12 -  fa0/22
+   switchport mode access
+   switchport access vlan 2
+   spanning-tree portfast
+   exit
+int range fa0/23 
+   switchport mode trunk (vlan id 태그를 다세요.- IEEE 802.1q만 가능함)
+end
+show run 입력한 명령어 확인
+show vlan : vlan id와 access port 확인
+show int trunk : trunk port 상태 확인
+
+PC VLAN 에 맞는 ip주소, SM, GATEWAY 지정 해야 함.
+
+PING TEST
+ 하나의 스위치 내에서 동일한 vlan 끼리 통신하기. 
+  	: SW1에서 vlan 1끼리 통신 확인, vlan 2끼리 통신확인
+	  SW2에서 vlan 1끼리 통신 확인, vlan 2끼리 통신확인
+	  SW1 vlan1 PC에서 SW2 vlan1 PC로 ping test
+	  SW1 vlan2 PC에서 SW2 vlan2 PC로 ping test
+	 각 gateway로 ping test
+	 vlan 1 PC에서 vlan 2 PC로 ping, tracert test (gateway를 거쳐서감)
+
+
+PC0>tracert 192.168.2.11
+
+Tracing route to 192.168.2.11 over a maximum of 30 hops: 
+
+  1   1 ms      1 ms      0 ms      192.168.1.1
+  2   1 ms      0 ms      0 ms      192.168.2.11
+
+Trace complete.
+
+
+vlan 보안 구성 : 
+ 1) vlan 1에 속한 access port는 access port를 지정하여 trunk port로 변환하지 않도록 한다.  (switchport mode access -수동으로 설정)
+ 2) 사용하지 않는 포트는 별도 vlan을 생성하여 해당 vlan의 access port로 속하게 하고, trunk port에서 tagging을 하지 못하도록 차단한다.
+
+@SW2
+en
+conf t
+vlan 900
+ name NOT_USE
+exit
+int range fa0/23, g0/1 - g0/2
+  switchport mode access
+  switchport access vlan 900
+  exit
+int fa0/24
+  switchport trunk allow vlan 1-2   (나머지 vlan은 tagging이 안됨)
+end
+show vlan
+show int trunk
+
+@SW1
+en
+conf t
+vlan 900
+ name NOT_USE
+exit
+int range g0/1 - g0/2
+  switchport mode access
+  switchport access vlan 900
+  exit
+int range fa0/23 - fa0/24
+  switchport trunk allow vlan 1-2
+end
+show vlan
+show int trunk
+
+사용하는 vlan만 tagging이 가능하도록 구성하는 것이 보안적임.
+Port        Vlans allowed on trunk
+Fa0/23      1-2
+Fa0/24      1-2
+
+Port        Vlans allowed and active in management domain
+Fa0/23      1,2
+Fa0/24      1,2
+
+
+
+
+정보확인
+ACC_SW1# show vlan
+
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/1, Fa0/2, Fa0/3, Fa0/4
+                                                Fa0/5, Fa0/6, Fa0/7, Fa0/8
+                                                Fa0/9, Fa0/10, Fa0/11
+2    SECURE                           active    Fa0/12, Fa0/13, Fa0/14, Fa0/15
+                                                Fa0/16, Fa0/17, Fa0/18, Fa0/19
+                                                Fa0/20, Fa0/21, Fa0/22
+900  NOT_USE                          active    Gig0/1, Gig0/2
+생략
+
+ACC_SW1#  show int trunk
+Port        Mode         Encapsulation  Status        Native vlan
+Fa0/23      on           802.1q         trunking      1
+Fa0/24      on           802.1q         trunking      1
+
+Port        Vlans allowed on trunk
+Fa0/23      1-2
+Fa0/24      1-2
+
+Port        Vlans allowed and active in management domain
+Fa0/23      1,2
+Fa0/24      1,2
+
+Port        Vlans in spanning tree forwarding state and not pruned
+Fa0/23      1,2
+Fa0/24      1,2
+ACC_SW1#
+
+
+ACC_SW2#show vlan
+
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/1, Fa0/2, Fa0/3, Fa0/4
+                                                Fa0/5, Fa0/6, Fa0/7, Fa0/8
+                                                Fa0/9, Fa0/10, Fa0/11
+2    SECURE                           active    Fa0/12, Fa0/13, Fa0/14, Fa0/15
+                                                Fa0/16, Fa0/17, Fa0/18, Fa0/19
+                                                Fa0/20, Fa0/21, Fa0/22
+900  NOT_USE                          active    Fa0/23, Gig0/1, Gig0/2
+생략
+
+ACC_SW2# show int trunk
+Port        Mode         Encapsulation  Status        Native vlan
+Fa0/24      on           802.1q         trunking      1
+
+Port        Vlans allowed on trunk
+Fa0/24      1-2
+
+Port        Vlans allowed and active in management domain
+Fa0/24      1,2
+
+Port        Vlans in spanning tree forwarding state and not pruned
+Fa0/24      1,2
+ACC_SW2#
+
